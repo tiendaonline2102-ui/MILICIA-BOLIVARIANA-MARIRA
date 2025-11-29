@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MILICIA BOLIVARIANA - Sistema de Registro</title>
+
+    <!-- Incluimos la librería SheetJS desde un CDN para la exportación a Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+    <style>
+        /* --- Estilos Generales y Reset --- */
+        :root {
+            --primary-color: #e63946;
+            /* Rojo */
+            --secondary-color: #000875;
+            /* Azul Marino */
+            --background-color: #000000;
+            --light-gray: #ffffff;
+            --medium-gray: #f8f9fa;
+            --text-color: #333;
+            --white: #ffffff;
+            --success-color: #2a9d8f;
+            --error-color: #e63946;
+            --warning-color: #f77f00;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        /* --- Header --- */
+        .app-header {
+            background-color: var(--secondary-color);
+            color: var(--white);
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .logo {
+            background-color: var(--primary-color);
+            color: var(--white);
+            padding: 0.5rem 1.5rem;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            letter-spacing: 1px;
+        }
+
+        .app-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        /* --- Contenido Principal --- */
+        .main-content {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        /* --- Controles (Buscar y Acciones) --- */
+        .controls-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .search-container {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .search-wrapper {
+            position: relative;
+        }
+
+        .clear-search {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #999;
+            font-size: 1.2rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(230, 57, 70, 0.2);
+        }
+
+        .actions-container {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            /* Permite que los botones se ajusten en pantallas pequeñas */
+            justify-content: center;
+        }
+
+        /* --- Botones --- */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background-color: #d62828;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: var(--white);
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .btn-edit {
+            background-color: var(--secondary-color);
+            color: var(--white);
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .btn-delete {
+            background-color: var(--error-color);
+            color: var(--white);
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .btn-export {
+            background-color: var(--success-color);
+            color: var(--white);
+        }
+
+        .btn-export:hover {
+            background-color: #238a7d;
+        }
+
+        /* --- Formulario de Registro --- */
+        #form-container {
+            background-color: var(--white);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            display: none;
+            /* Oculto por defecto */
+        }
+
+        #form-container h2 {
+            color: var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .form-section {
+            margin-bottom: 2rem;
+        }
+
+        .form-section h3 {
+            color: var(--text-color);
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-group {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(230, 57, 70, 0.2);
+        }
+
+        .form-group input.error {
+            border-color: var(--error-color);
+        }
+
+        .error-message {
+            color: var(--error-color);
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+            display: block;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        /* --- Tabla de Registros --- */
+        .table-container {
+            background-color: var(--white);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+
+        .person-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .person-table th {
+            background-color: var(--secondary-color);
+            color: var(--white);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 500;
+        }
+
+        .person-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .person-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .person-table tr:hover {
+            background-color: var(--medium-gray);
+        }
+
+        .no-records {
+            text-align: center;
+            font-style: italic;
+            color: #6c757d;
+            padding: 2rem !important;
+        }
+
+        /* --- Modal de Confirmación --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .modal-content {
+            background-color: var(--white);
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        .modal-content p {
+            margin-bottom: 2rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+
+        /* --- Notificaciones --- */
+        #notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 4px;
+            color: var(--white);
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        #notification.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        #notification.success {
+            background-color: var(--success-color);
+        }
+
+        #notification.error {
+            background-color: var(--error-color);
+        }
+
+        /* --- Diseño Responsivo --- */
+        @media (max-width: 768px) {
+            .controls-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .actions-container {
+                justify-content: center;
+            }
+
+            .form-row {
+                flex-direction: column;
+            }
+
+            .form-group {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header class="app-header">
+        <div class="logo">MILICIA BOLIVARIANA</div>
+        <h1 class="app-title">Sistema de Registro</h1>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="main-content">
+        <!-- Controles de Búsqueda y Acciones -->
+        <div class="controls-container">
+            <div class="search-container">
+                <div class="search-wrapper">
+                    <input type="text" id="search-input" class="search-input"
+                        placeholder="Buscar por nombre, cédula, código de carnet, UPDI/APDI/UCM...">
+                    <button id="clear-search-btn" class="clear-search" style="display: none;">&times;</button>
+                </div>
+            </div>
+            <div class="actions-container">
+                <button id="btn-register" class="btn btn-primary">Registrar Nuevo</button>
+                <button id="btn-export" class="btn btn-export">Exportar a Excel</button>
+                <button id="btn-export-json" class="btn btn-secondary">Exportar DB</button>
+                <button id="btn-import-json" class="btn btn-secondary">Importar DB</button>
+            </div>
+        </div>
+
+        <!-- Formulario de Registro/Edición -->
+        <div id="form-container">
+            <h2 id="form-title">Nuevo Registro</h2>
+            <form id="person-form">
+                <input type="hidden" id="person-id">
+
+                <div class="form-section">
+                    <h3>Información Personal</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="nombre">Nombre*</label>
+                            <input type="text" id="nombre" name="nombre" required>
+                            <span class="error-message" id="error-nombre"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="apellido">Apellido*</label>
+                            <input type="text" id="apellido" name="apellido" required>
+                            <span class="error-message" id="error-apellido"></span>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="cedula">Cédula de Identidad*</label>
+                            <input type="text" id="cedula" name="cedula" required>
+                            <span class="error-message" id="error-cedula"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="telefono">Teléfono*</label>
+                            <input type="text" id="telefono" name="telefono" required>
+                            <span class="error-message" id="error-telefono"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Carnet de la Patria</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="serial_carnet">Serial del Carnet</label>
+                            <input type="text" id="serial_carnet" name="serial_carnet" required>
+                        <span class="error-message" id="error-serial_carnet"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="codigo_carnet">Código del Carnet</label>
+                            <input type="text" id="codigo_carnet" name="codigo_carnet" required>
+                            <span class="error-message" id="error-codigo_carnet"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Información Adicional</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="cuenta_bancaria">Número de Cuenta Bancaria</label>
+                            <input type="text" id="cuenta_bancaria" name="cuenta_bancaria" required>
+                            <span class="error-message" id="error-cuenta_bancaria"></span>
+                        </div>
+                    
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="codigo_UCM">Codigo UCM</label>
+                        <input type="text" id="codigo_UCM" name="codigo_UCM" required>
+                        <span class="error-message" id="error-codigo_UCM"></span>
+                    </div>
+                </div>
+                       
+                        <div class="form-group">
+                            <label for="codigo_bpdi">Codigo BPDI</label>
+                            <input type="text" id="codigo_bpdi" name="codigo_bpdi" required>
+                            <span class="error-message" id="error-codigo_bpdi"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="codigo_updi">Codigo UPDI</label>
+                            <input type="text" id="codigo_updi" name="codigo_updi" required>
+                            <span class="error-message" id="error-codigo_updi"></span>
+                        </div>
+                    </div>
+                </div>
+                
+
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="btn-save">Guardar</button>
+                    <button type="button" class="btn btn-secondary" id="btn-cancel">Cancelar</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tabla de Registros -->
+        <div class="table-container">
+            <table class="person-table">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Apellido</th>
+                        <th>Cédula</th>
+                        <th>Serial Carnet</th>
+                        <th>Código Carnet</th>
+                        <th>Cuenta Bancaria</th>
+                        <th>Teléfono</th>
+                        <th>Codigo UCM</th>
+                        <th>Codigo BPDI</th>
+                        <th>Codigo UPDI</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <!-- Las filas se insertarán aquí con JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Input oculto para la importación de archivos -->
+    <input type="file" id="import-file-input" accept=".json" style="display: none;">
+
+    <!-- Notificación -->
+    <div id="notification"></div>
+
+    <!-- Modal de Confirmación para Eliminar -->
+    <div id="confirm-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modal-title">Confirmar Acción</h3>
+            <p id="modal-message">¿Estás seguro?</p>
+            <div class="modal-actions">
+                <button id="modal-btn-cancel" class="btn btn-secondary">Cancelar</button>
+                <button id="modal-btn-confirm" class="btn btn-danger">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Referencias a elementos del DOM ---
+            const formContainer = document.getElementById('form-container');
+            const personForm = document.getElementById('person-form');
+            const formTitle = document.getElementById('form-title');
+            const tableBody = document.getElementById('table-body');
+            const searchInput = document.getElementById('search-input');
+            const notification = document.getElementById('notification');
+            const btnRegister = document.getElementById('btn-register');
+            const btnExport = document.getElementById('btn-export');
+            const btnSave = document.getElementById('btn-save');
+            const btnExportJson = document.getElementById('btn-export-json');
+            const btnImportJson = document.getElementById('btn-import-json');
+            const importFileInput = document.getElementById('import-file-input');
+            const btnCancel = document.getElementById('btn-cancel');
+            const clearSearchBtn = document.getElementById('clear-search-btn');
+
+            // Modal de confirmación
+            const confirmModal = document.getElementById('confirm-modal');
+            const modalBtnConfirm = document.getElementById('modal-btn-confirm');
+            const modalBtnCancel = document.getElementById('modal-btn-cancel');
+
+            // --- Estado de la Aplicación ---
+            let people = [];
+            let filteredPeople = [];
+            let editingPersonId = null;
+
+            // --- Inicialización ---
+            function init() {
+                loadPeopleFromStorage();
+                renderTable();
+                attachEventListeners();
+            }
+
+            // --- Gestión de Datos (LocalStorage) ---
+            function loadPeopleFromStorage() {
+                try {
+                    const storedPeople = localStorage.getItem('milicia_bolivariana_people');
+                    if (storedPeople) {
+                        people = JSON.parse(storedPeople);
+                    }
+                } catch (error) {
+                    console.error("Error al cargar datos de localStorage:", error);
+                    people = []; // Iniciar con array vacío si hay un error
+                    showNotification('No se pudieron cargar los datos. El almacenamiento puede estar corrupto.', 'error');
+                }
+                filteredPeople = [...people];
+            }
+
+            function savePeopleToStorage() {
+                try {
+                    localStorage.setItem('milicia_bolivariana_people', JSON.stringify(people));
+                } catch (error) {
+                    console.error("Error al guardar datos en localStorage:", error);
+                    showNotification('Error al guardar los datos. El almacenamiento puede estar lleno.', 'error');
+                }
+            }
+
+            // --- Renderizado de la Tabla ---
+            function renderTable() {
+                tableBody.innerHTML = '';
+                if (filteredPeople.length === 0) {
+                    const row = tableBody.insertRow();
+                    const cell = row.insertCell();
+                    cell.colSpan = 10;
+                    cell.className = 'no-records';
+                    cell.textContent = 'No hay registros para mostrar';
+                    return;
+                }
+
+                filteredPeople.forEach(person => {
+                    const row = tableBody.insertRow();
+                    row.innerHTML = `
+                        <td>${person.nombre}</td>
+                        <td>${person.apellido}</td>
+                        <td>${person.cedula}</td>
+                        <td>${person.serial_carnet || ''}</td>
+                        <td>${person.codigo_carnet || ''}</td>
+                        <td>${person.cuenta_bancaria || ''}</td>
+                        <td>${person.telefono || ''}</td> 
+                        <td>${person.codigo_bpdi || ''}</td>
+                        <td>${person.codigo_updi || ''}</td> 
+                        <td>${person.codigo_UCM || ''}</td>
+                        <td>
+                            <button class="btn btn-edit" data-id="${person.id}">Editar</button>
+                            <button class="btn btn-delete" data-id="${person.id}">Eliminar</button>
+                        </td>
+                    `;
+                });
+            }
+
+            // --- Manejo del Formulario ---
+            function showForm(person = null) {
+                editingPersonId = person ? person.id : null;
+                formTitle.textContent = person ? 'Editar Registro' : 'Nuevo Registro';
+                btnSave.textContent = person ? 'Actualizar' : 'Guardar';
+
+                if (person) {
+                    document.getElementById('person-id').value = person.id;
+                    document.getElementById('nombre').value = person.nombre;
+                    document.getElementById('apellido').value = person.apellido;
+                    document.getElementById('cedula').value = person.cedula;
+                    document.getElementById('telefono').value = person.telefono || '';
+                    document.getElementById('serial_carnet').value = person.serial_carnet || '';
+                    document.getElementById('codigo_carnet').value = person.codigo_carnet || '';
+                    document.getElementById('cuenta_bancaria').value = person.cuenta_bancaria || '';
+                    document.getElementById('codigo_bpdi').value = person.codigo_bpdi || '';
+                    document.getElementById('codigo_updi').value = person.codigo_updi || '';
+                    document.getElementById('codigo_UCM').value = person.codigo_UCM || '';
+                } else {
+                    personForm.reset();
+                }
+                clearErrors();
+                formContainer.style.display = 'block';
+                window.scrollTo({ top: formContainer.offsetTop, behavior: 'smooth' });
+            }
+
+            function hideForm() {
+                formContainer.style.display = 'none';
+                personForm.reset();
+                editingPersonId = null;
+                clearErrors();
+            }
+
+            function validateForm(formData) {
+                let isValid = true;
+                clearErrors();
+
+                if (!formData.nombre.trim()) {
+                    showError('error-nombre', 'El nombre es obligatorio');
+                    isValid = false;
+                }
+                if (!formData.apellido.trim()) {
+                    showError('error-apellido', 'El apellido es obligatorio');
+                    isValid = false;
+                }
+                if (!formData.cedula.trim()) {
+                    showError('error-cedula', 'La cédula es obligatoria');
+                    isValid = false;
+                } else if (!/^\d+$/.test(formData.cedula)) {
+                    showError('error-cedula', 'La cédula debe contener solo números');
+                    isValid = false;
+                }
+                // Validar que la cédula sea única (solo al crear, no al editar)
+                if (!editingPersonId) {
+                    const isDuplicate = people.some(p => p.cedula === formData.cedula);
+                    if (isDuplicate) {
+                        showError('error-cedula', 'Esta cédula ya está registrada');
+                        isValid = false;
+                    }
+                }
+                if (formData.telefono && !/^\d+$/.test(formData.telefono)) {
+                    showError('error-telefono', 'El teléfono debe contener solo números');
+                    isValid = false;
+
+                    if (formData.serial_carnet && !/^\d+$/.test(formData.serial_carnet)) {
+                        showError('error-serial_carnet', 'El serial del carnet debe contener solo números');
+                        isValid = false;
+                    }
+                    
+                    if (formData.telefono && !/^\d+$/.test(formData.codigo_carnet)) {
+                        showError('error-codigo_carnet', 'El código del carnet debe contener solo números');
+                        isValid = false;
+                    }
+                    
+                    
+                }
+
+                return isValid;
+            }
+
+            function showError(elementId, message) {
+                const errorElement = document.getElementById(elementId);
+                errorElement.textContent = message;
+                document.getElementById(elementId.replace('error-', '')).classList.add('error');
+            }
+
+            function clearErrors() {
+                document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
+                document.querySelectorAll('.form-group input').forEach(el => el.classList.remove('error'));
+            }
+
+            function handleFormSubmit(e) {
+                e.preventDefault();
+                const formData = {
+                    nombre: document.getElementById('nombre').value,
+                    apellido: document.getElementById('apellido').value,
+                    cedula: document.getElementById('cedula').value,
+                    telefono: document.getElementById('telefono').value,
+                    serial_carnet: document.getElementById('serial_carnet').value,
+                    codigo_carnet: document.getElementById('codigo_carnet').value,
+                    cuenta_bancaria: document.getElementById('cuenta_bancaria').value,
+                    codigo_bpdi: document.getElementById('codigo_bpdi').value,
+                    codigo_updi: document.getElementById('codigo_updi').value,
+                    codigo_UCM: document.getElementById('codigo_UCM').value,
+                };
+
+                if (!validateForm(formData)) {
+                    return;
+                }
+
+                if (editingPersonId) {
+                    // Actualizar
+                    const index = people.findIndex(p => p.id === editingPersonId);
+                    if (index !== -1) {
+                        people[index] = { ...people[index], ...formData };
+                        showNotification('Registro actualizado exitosamente', 'success');
+                    }
+                } else {
+                    // Crear nuevo
+                    const newPerson = {
+                        id: crypto.randomUUID(), // ID único y más robusto
+                        ...formData
+                    };
+                    people.push(newPerson);
+                    showNotification('Registro guardado exitosamente', 'success');
+                }
+
+                savePeopleToStorage();
+                handleSearch(); // Re-aplica el filtro y renderiza
+                hideForm();
+            }
+
+            // --- Manejo de Acciones de la Tabla ---
+            function handleTableClick(e) {
+                if (e.target.classList.contains('btn-edit')) {
+                    const id = e.target.getAttribute('data-id');
+                    const person = people.find(p => p.id === id);
+                    if (person) {
+                        showForm(person);
+                    }
+                } else if (e.target.classList.contains('btn-delete')) {
+                    const id = e.target.getAttribute('data-id');
+                    const person = people.find(p => p.id === id);
+                    if (person) {
+                        showConfirmModal(
+                            'Eliminar Registro',
+                            `¿Está seguro de que desea eliminar a ${person.nombre} ${person.apellido}? Esta acción no se puede deshacer.`,
+                            () => {
+                                people = people.filter(p => p.id !== id);
+                                savePeopleToStorage();
+                                handleSearch(); // Re-aplica el filtro y renderiza
+                                showNotification('Registro eliminado exitosamente', 'success');
+                            }
+                        );
+                    }
+                }
+            }
+
+            // --- Modal de Confirmación ---
+            function showConfirmModal(title, message, onConfirm) {
+                document.getElementById('modal-title').textContent = title;
+                document.getElementById('modal-message').textContent = message;
+                confirmModal.style.display = 'flex';
+
+                modalBtnConfirm.onclick = () => {
+                    confirmModal.style.display = 'none';
+                    onConfirm();
+                };
+                modalBtnCancel.onclick = () => confirmModal.style.display = 'none';
+            }
+
+            // --- Búsqueda ---
+            function handleSearch() {
+                const term = searchInput.value.toLowerCase().trim();
+                if (!term) {
+                    filteredPeople = [...people];
+                } else {
+                    filteredPeople = people.filter(person =>
+                        person.nombre.toLowerCase().includes(term) ||
+                        person.apellido.toLowerCase().includes(term) ||
+                        person.cedula.includes(term) ||
+                        (person.serial_carnet && person.serial_carnet.toLowerCase().includes(term)) ||
+                        (person.codigo_carnet && person.codigo_carnet.toLowerCase().includes(term)) ||
+                        (person.codigo_bpdi && person.codigo_bpdi.toLowerCase().includes(term)) ||
+                        (person.codigo_updi && person.codigo_updi.toLowerCase().includes(term))
+                       
+                     );
+                }
+                renderTable();
+                // Mostrar u ocultar el botón de limpiar búsqueda
+                clearSearchBtn.style.display = term ? 'inline' : 'none';
+            }
+
+            // --- Exportación a Excel ---
+            function handleExport() {
+                if (filteredPeople.length === 0) {
+                    showNotification('No hay datos para exportar', 'error');
+                    return;
+                }
+
+                // Preparar datos para exportar (sin el ID)
+                const dataToExport = filteredPeople.map(p => ({
+                    "Nombre": p.nombre,
+                    "Apellido": p.apellido,
+                    "Cédula": p.cedula,
+                    "Teléfono": p.telefono,
+                    "Serial Carnet Patria": p.serial_carnet,
+                    "Código Carnet Patria": p.codigo_carnet,
+                    "Cuenta Bancaria": p.cuenta_bancaria,
+                    "Código UCM": p.codigo_UCM,
+                    "Código BPDI": p.codigo_bpdi,
+                    "Código UPDI": p.codigo_updi,
+                    
+                }));
+
+                // Crear una hoja de cálculo
+                const ws = XLSX.utils.json_to_sheet(dataToExport);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Registros');
+
+                // Generar y descargar el archivo
+                const filename = `milicia_bolivariana_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                XLSX.writeFile(wb, filename);
+                showNotification('Datos exportados exitosamente', 'success');
+            }
+
+            // --- Importación y Exportación de JSON ---
+
+            function handleExportJson() {
+                if (people.length === 0) {
+                    showNotification('No hay datos para exportar.', 'error');
+                    return;
+                }
+
+                const dataStr = JSON.stringify(people, null, 2); // El '2' formatea el JSON para que sea legible
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `backup_milicia_registros_${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showNotification('Copia de seguridad JSON exportada.', 'success');
+            }
+
+            function handleImportJson() {
+                importFileInput.click(); // Abre el selector de archivos
+            }
+
+            function processImportedFile(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        // Validación básica de la estructura de datos
+                        if (Array.isArray(importedData) && (importedData.length === 0 || (importedData[0].id && importedData[0].nombre && importedData[0].cedula))) {
+                            showConfirmModal(
+                                'Confirmar Importación',
+                                `¿Estás seguro de que quieres reemplazar todos los registros actuales con los ${importedData.length} registros del archivo? Esta acción no se puede deshacer.`,
+                                () => {
+                                    people = importedData;
+                                    savePeopleToStorage();
+                                    handleSearch(); // Actualiza la vista
+                                    showNotification('Datos importados exitosamente.', 'success');
+                                }
+                            );
+                        } else {
+                            showNotification('El archivo JSON no tiene un formato válido.', 'error');
+                        }
+                    } catch (error) {
+                        showNotification('Error al leer el archivo. Asegúrate de que sea un JSON válido.', 'error');
+                    } finally {
+                        importFileInput.value = ''; // Limpia el input para permitir importar el mismo archivo de nuevo
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            // --- Sistema de Notificaciones ---
+            function showNotification(message, type) {
+                notification.textContent = message;
+                notification.className = `show ${type}`;
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 3000);
+            }
+
+            // --- Asignación de Event Listeners ---
+            function attachEventListeners() {
+                btnRegister.addEventListener('click', () => showForm());
+                btnCancel.addEventListener('click', hideForm);
+                personForm.addEventListener('submit', handleFormSubmit);
+                tableBody.addEventListener('click', handleTableClick);
+                searchInput.addEventListener('input', handleSearch);
+                btnExport.addEventListener('click', handleExport);
+                btnExportJson.addEventListener('click', handleExportJson);
+                btnImportJson.addEventListener('click', handleImportJson);
+                importFileInput.addEventListener('change', processImportedFile);
+                clearSearchBtn.addEventListener('click', () => {
+                    searchInput.value = '';
+                    handleSearch();
+                });
+                confirmModal.addEventListener('click', (e) => { if (e.target === confirmModal) confirmModal.style.display = 'none'; });
+            }
+
+            // --- Lanzar la aplicación ---
+            init();
+        });
+    </script>
+
+</body>
+
+</html>
